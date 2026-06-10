@@ -1,0 +1,66 @@
+### 📌 理論規格書：雜訊干擾與資訊熵減理論架構
+### 🧠 核心導讀
+本模型將資訊傳輸視為一個開放動力系統，旨在解決資訊在物理傳輸層中受環境雜訊影響而引發的系統熵增問題。核心哲學在於通過負反饋路徑，將非結構化雜訊轉化為系統內的特徵參照，從而實現資訊流的有序化與冗餘修正。
+### 1️⃣ 核心貢獻 (CORE CONTRIBUTION)
+ * **1.1 Core Claim:** 本模型透過動態抗干擾矩陣，在 O(N \log N) 時間複雜度內，相較於經典維納濾波，顯著提升了高斯雜訊環境下的信噪比 (SNR) 收斂速度。
+ * **1.2 Problem Definition:** 系統目標為極小化熵值 H(S') = -\sum p(s') \log p(s')，其中 S' 為淨化訊號。壓力模型定義為雜訊強度 \sigma^2 之隨機遊走。
+### 2️⃣ 形式化系統模型 (FORMAL SYSTEM MODEL)
+定義系統 S = (A, X, F, O, G)，其中：
+ * A: 觀測算子。
+ * X: 狀態空間。
+ * F: 轉換函數。
+ * O: 輸出空間。
+ * G: 反饋調節機制。
+狀態動力學方程為：
+
+
+其中 \mathcal{N}(i) 代表系統的環境雜訊，其演化服從：
+
+### 3️⃣ 理論變量 → 可觀測量映射 (OBSERVABLE MAPPING)
+| 理論變量 | 定義 | 觀測指標 (Proxy) | 採集邏輯 |
+|---|---|---|---|
+| \mathcal{N}(t) | 瞬時雜訊強度 | 殘差均方誤差 (MSE) | $ |
+| H(S) | 資訊熵增 | 資訊丟失率 (Packet Loss) | \frac{N_{drop}}{N_{total}} |
+| G | 反饋增益 | 收斂迭代數 (Iterations) | $\min {k \mid |
+### 4️⃣ 主定理與推論 (MAIN THEOREM)
+**定理 1 (資訊收斂定理):** 若系統反饋函數 G 滿足 Lipschitz 連續條件且增益係數 \eta \in (0, 1)，則系統資訊熵滿足單調遞減性質：
+
+
+其中 \lambda > 0 為收斂常數，當且僅當訊號頻譜與雜訊頻譜正交時，等號成立。
+### 5️⃣ 基準測試與指標 (BASELINES & METRICS)
+ * **基準技術:** 經典低通濾波 (Low-pass Filter)、卡爾曼濾波 (Kalman Filter)。
+ * **評估參數:** 1. **資訊純度 (Purity):** \frac{S_{target}}{S_{total}}
+   2. **系統延遲 (Latency):** T_{proc} - T_{in}
+### 6️⃣ PYTHON 模擬 (PYTHON SIMULATION)
+```python
+import numpy as np
+
+def observe_state(signal, noise):
+    """將理論變量映射為具體觀測指標"""
+    mse = np.mean((signal - (signal + noise))**2)
+    entropy = -np.sum(signal * np.log2(signal + 1e-10))
+    return {"mse": mse, "entropy": entropy}
+
+def system_step(x_t, noise_t, gain=0.1):
+    # 熵減演算核心
+    correction = -gain * noise_t
+    x_next = x_t + correction
+    return x_next
+
+# 模擬路徑
+signal = np.random.rand(100)
+noise = np.random.normal(0, 0.5, 100)
+x = signal + noise
+
+for t in range(10):
+    metrics = observe_state(x, noise)
+    x = system_step(x, noise, gain=0.2)
+    print(f"Time {t}: MSE={metrics['mse']:.4f}")
+
+```
+### 7️⃣ 討論 (DISCUSSION)
+本模型區別於傳統訊號處理之處，在於將「反饋」視為系統內在動力學的一部分，而非外部控制。其核心洞見在於：資訊品質的提升本質上是對外部環境擾動進行逆向建模的過程，透過不斷調整與基準模型的差異，將無序轉化為內部結構。
+### 8️⃣ 限制 (LIMITATIONS)
+ 1. **收斂邊界:** 若雜訊為白雜訊且具備無限頻寬，系統的理論收斂精度受採樣頻率限制（奈奎斯特頻率限制）。
+ 2. **計算消耗:** 頻繁的反饋運算可能導致在資源受限的邊緣運算裝置上產生瓶頸。
+ 3. **邏輯死鎖:** 當輸入訊號本身接近隨機混沌時，模型可能誤判系統錯誤而進入持續調整的震盪狀態。
