@@ -1,74 +1,323 @@
-### 📌 理論規格書：資訊安全完整性系統 (ISCS)
-### 🧠 核心導讀
-ISCS 系統將密碼學視為一個資訊熵守恆的變換過程。在對抗環境下，系統透過非線性轉換將結構化明文映射至高熵密文空間，並藉由閉環反饋機制即時修正熵源，確保在不可信任通道中達成資訊的不可辨識性與完整性驗證。
-### 1️⃣ 核心貢獻 (CORE CONTRIBUTION)
- * **1.1 Core Claim**: 透過動態熵注入（Dynamic Entropy Injection）與前向安全性監控，ISCS 系統在抗側信道攻擊能力與資料完整性驗證準確率上，較傳統靜態加密算法提升 O(\log N) 階級的防禦冗餘。
- * **1.2 Problem Definition**: 系統目標為在有限運算資源下，最小化密文的統計特徵洩漏。壓力環境定義為密文在多重統計分析（Differential Cryptanalysis）下的可識別度，目標指標為密文分布與理想亂數分布之間的偏差距離 D_{KL}(P_{cipher} || P_{random})。
-### 2️⃣ 形式化系統模型 (FORMAL SYSTEM MODEL)
-定義系統 S = (A, X, F, O, G)，其中：
- * A: 有限字母集。
- * X: 狀態空間，x(t) \in \{0, 1\}^n。
- * F: 轉換函數，f: X \times K \to X，其中 K 為金鑰空間。
- * O: 觀測函數。
- * G: 反饋校正算子。
-**狀態動力學方程**：
+ISCS（資訊安全完整性系統）可以用白話理解成：它是一個會「邊加密、邊自我調整」的系統。每次資料被加密時，不只是單純用固定公式轉換，而是會把隨機亂數、動態金鑰和內部狀態一起混合進去，讓輸出的密文變得更難被分析。系統還會持續監測密文的統計特性，例如是否太有規律，然後再自動調整加密方式與熵來源，避免被攻擊者找出模式。從數學角度看，它是在一個隨機動態系統中運作，目標是讓密文的分布越來越接近完全隨機，同時確保資訊沒有被破壞或洩漏。簡單說，就是一個會不斷「提高混亂程度並自我修正」的智慧型加密系統，讓資料在不可信環境中依然保持安全與完整。
 
 
-其中 \sigma 為非線性替換盒（S-Box）轉換，k_t 為隨時間演進的金鑰流，\eta(t) 為由亂數生成器產生的即時熵因子，確保：
 
-### 3️⃣ 理論變量 → 可觀測量映射 (OBSERVABLE MAPPING)
-| 理論變量 (Theoretical Variable) | 觀測指標 (Measurement Metric) | 數據採集邏輯 |
-|---|---|---|
-| **系統熵值** H(X) | 亂數度測試 (NIST SP 800-22) | 採樣輸出位元流進行頻率檢定 |
-| **加密強度** \mathcal{I} | 差分攻擊識別率 (Success Rate) | 計算輸入差分與輸出差分之相關性 |
-| **處理延遲** \Delta \tau | CPU 週期數 (Clock Cycles) | 高精度計時器監控運算耗時 |
-### 4️⃣ 主定理與推論 (MAIN THEOREM)
-**定理 (Entropy Preservation Theorem)**：
-對於任意長度為 L 的明文 M，若演算法 F 滿足置換-替換網路（SPN）的擴散特性，則加密輸出 C 的資訊熵滿足：
+# 📌 ISCS（Information Security & Integrity Control System）  
+## 📌 完整可驗證理論形式化版本（Verification Closure Model）
 
+---
 
-其中 \epsilon 為受限於硬體邊界條件的洩漏係數。
-**推論**：當 \epsilon \to 0 時，系統達到完美保密性（Perfect Secrecy），此時密文的統計分布與系統金鑰的長度呈嚴格線性相關。
-### 5️⃣ 基準測試與指標 (BASELINES & METRICS)
- * **基準技術**: AES-256 (標準區塊加密)。
- * **核心評估參數**:
-   1. **傳播比率 (Diffusion Ratio)**：單位明文改變引起的密文變化位元數。
-   2. **熵增率 (Entropy Gain Rate)**：每輪迭代對系統亂數度的貢獻。
-   3. **抗干擾閾值**：在模擬雜訊注入下的成功解碼率。
-### 6️⃣ PYTHON 模擬 (PYTHON SIMULATION)
-```python
-import hashlib
-import os
+# 1️⃣ 系統定義（Concrete Formalization）
 
-class ISCS_Model:
-    def __init__(self, key):
-        self.key = key
-        self.entropy_source = os.urandom(16)
+## 📐 選擇數學結構
 
-    def observe_state(self, data):
-        """映射理論變量至觀測指標"""
-        hash_val = hashlib.sha256(data).hexdigest()
-        entropy_score = len(set(hash_val)) / 16.0  # 觀測統計分布
-        return {"entropy_score": entropy_score, "length": len(data)}
+\[
+\textbf{metric space } (X, d) + \textbf{stochastic extension}
+\]
 
-    def encrypt(self, plaintext):
-        # 模擬狀態動力學 x(t+1)
-        xor_pad = int.from_bytes(self.entropy_source, 'big')
-        cipher = bytes([b ^ (xor_pad & 0xFF) for b in plaintext])
-        return cipher
+---
 
-# 執行模擬
-system = ISCS_Model(key=b'secret_key')
-data = b"Sensitive_Payload"
-ciphertext = system.encrypt(data)
-metrics = system.observe_state(ciphertext)
+## 🧩 State / Observation / Signal / Control
 
-print(f"Metrics: {metrics}")
+### 🟦 state space
 
-```
-### 7️⃣ 討論 (DISCUSSION)
-本模型透過將亂數因子直接注入狀態方程，解決了傳統 AES 類算法在長期運行中因金鑰流固化而產生的統計特徵漂移問題。與既有理論不同，ISCS 將「狀態重置」作為核心運算的一環，而非維護性操作，顯著降低了側信道分析的攻擊面。
-### 8️⃣ 限制 (LIMITATIONS)
- 1. **熵源依賴性**：模型的安全性嚴格受限於物理熵源的隨機品質；若熵源衰竭，系統將退化為偽隨機映射。
- 2. **算力開銷**：高頻率的重熵化（Re-seeding）過程在高吞吐量網路環境下會產生顯著的運算延遲。
- 3. **數學邊界**：目前定理假設理想狀態下的 SPN 網絡，未完全考慮量子計算威脅模型（Post-Quantum Cryptography transition）。
+\[
+X = \{0,1\}^n \times K \times E
+\]
+
+其中：
+
+- \(x_t \in \{0,1\}^n\)：密文狀態  
+- \(k_t \in K\)：動態金鑰  
+- \(e_t \in E \subset \mathbb{R}^m\)：熵源狀態  
+
+---
+
+### 👁 observation space
+
+\[
+O = \mathbb{R}^p
+\]
+
+（NIST test / KL divergence / correlation metrics）
+
+---
+
+### 📡 signal space
+
+\[
+S = \mathbb{R}^m
+\]
+
+（熵強度、攻擊指標、噪聲觀測）
+
+---
+
+### 🎛 control space
+
+\[
+U = K \times \mathbb{R}^m
+\]
+
+（key update + entropy injection control）
+
+---
+
+## 📏 metric 定義
+
+\[
+d(x_i, x_j) = \lambda_1 d_H(x_i, x_j) + \lambda_2 D_{KL}(P_i \,\|\, P_j)
+\]
+
+---
+
+# 2️⃣ 動態系統（Well-defined Dynamics）
+
+## 🔁 state dynamics
+
+\[
+X_{t+1} = F(X_t, O_t, U_t, \theta)
+\]
+
+---
+
+## 🔬 展開形式
+
+\[
+x_{t+1} = \sigma(x_t \oplus k_t \oplus \eta_t)
+\]
+
+\[
+k_{t+1} = G_k(k_t, O_t)
+\]
+
+\[
+e_{t+1} = \phi(e_t, \xi_t)
+\]
+
+---
+
+## ⚙ function structure
+
+- \(F\)：nonlinear + stochastic + Lipschitz (piecewise)
+- \(G\)：bounded update / neural operator
+- \(\phi\)：stochastic contraction process
+
+---
+
+## 🎛 control law
+
+\[
+U_t = G(S_t, \theta)
+\]
+
+\[
+S_t = \phi(X_t, O_t)
+\]
+
+---
+
+## 🌪 entropy injection
+
+\[
+\eta_t \sim \text{sub-Gaussian}(0, \sigma^2)
+\]
+
+---
+
+# 3️⃣ 假設集合（Axioms）
+
+## 📌 A1 — 有界狀態空間
+
+\[
+X \subseteq \{0,1\}^n \times K \times E,\quad \text{compact}
+\]
+
+---
+
+## 📌 A2 — 噪聲模型
+
+\[
+\eta_t \sim \text{sub-Gaussian}, \quad \xi_t \sim \text{bounded noise}
+\]
+
+---
+
+## 📌 A3 — Lipschitz continuity
+
+\[
+\|F(x)-F(y)\| \le L \|x-y\|
+\]
+
+---
+
+## 📌 A4 — 控制有界性
+
+\[
+\|G(S_t)\| \le C
+\]
+
+---
+
+## 📌 A5 — 時間穩定性
+
+\[
+\eta_t \to 0 \quad \text{or annealing bounded schedule}
+\]
+
+---
+
+# 4️⃣ 可驗證命題（Testable Propositions）
+
+---
+
+## 📉 Proposition 1 — 熵收斂
+
+\[
+D_{KL}(P_{cipher,t} \,\|\, P_{random}) \rightarrow 0
+\]
+
+---
+
+## 📉 Proposition 2 — 穩定性
+
+\[
+\mathbb{E}[d(X_{t+1}, X_t)] \le \rho \mathbb{E}[d(X_t, X_{t-1})], \quad \rho < 1
+\]
+
+---
+
+## 🔐 Proposition 3 — 資訊泄漏上界
+
+\[
+I(M; C_t) \le \epsilon
+\]
+
+---
+
+# 5️⃣ 穩定性分析（Lyapunov Framework）
+
+---
+
+## 📌 Lyapunov function
+
+\[
+V(X_t) =
+D_{KL}(P_{cipher,t} \,\|\, P_{uniform})
++ \alpha \|k_t - k^*\|^2
+\]
+
+---
+
+## 📉 drift condition
+
+\[
+V(X_{t+1}) - V(X_t)
+\le -\gamma \|X_t\|^2 + \epsilon
+\]
+
+---
+
+## 📌 contraction condition
+
+若：
+
+\[
+\|\sigma(x) - \sigma(y)\| \le \rho \|x-y\|,\quad \rho < 1
+\]
+
+則：
+
+> stochastic contractive system
+
+---
+
+# 6️⃣ 可驗證性（Experimental Validity）
+
+---
+
+## 🧪 simulation pipeline
+
+- Markov chain cipher simulator  
+- RNG entropy injection model  
+- adversarial reconstruction testing  
+
+---
+
+## 📊 收斂檢測
+
+- KL divergence → 0  
+- entropy → max  
+- correlation → 0  
+
+---
+
+## 🧯 stability testing
+
+- perturb \(k_t\)  
+- measure output divergence  
+- compute Jacobian spectral radius  
+
+---
+
+## 📏 error metric
+
+\[
+\epsilon_t = \|P_{empirical} - P_{ideal}\|
+\]
+
+---
+
+# 7️⃣ 系統分類（System Class）
+
+✔ Stochastic Dynamical System  
+✔ Control System  
+✔ Cryptographic Transformation System  
+✔ Hybrid Feedback System  
+✔ Estimation System  
+
+---
+
+# 8️⃣ 主定理（Main Theorem）
+
+---
+
+## 📌 ISCS Stability & Security Convergence Theorem
+
+若滿足 A1–A5，則：
+
+### (1) 穩定性
+
+\[
+X_t \xrightarrow{a.s.} X^*
+\]
+
+---
+
+### (2) 安全收斂
+
+\[
+D_{KL}(P_{cipher,t} \,\|\, P_{random}) \rightarrow 0
+\]
+
+---
+
+### (3) 泄漏有界
+
+\[
+I(M;C_t) \le \epsilon
+\]
+
+---
+
+# 9️⃣ 一句話理論本質
+
+> ISCS 是一個在隨機控制作用下，使密文分布透過動態熵注入機制收斂至最大熵不動點的收縮型加密動力系統。
+
+---
+
+# 🔟 核心本質總結
+
+👉 本系統本質不是加密算法，而是：
+
+> **在 metric space 上運行的 stochastic contraction dynamics，將資訊流推動至統計均勻不動點。**
