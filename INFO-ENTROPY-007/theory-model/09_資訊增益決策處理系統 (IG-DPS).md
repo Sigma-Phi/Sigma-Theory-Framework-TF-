@@ -1,62 +1,279 @@
-### 📌 理論規格書：資訊增益決策處理系統 (IG-DPS)
-### 🧠 核心導讀
-IG-DPS 是一個將決策過程建模為負熵流轉移的物理系統。在高度不確定的決策環境中，系統透過對數據分佈的動態觀測，將初始熵減小至決策臨界閾值以下。其核心哲學在於「資訊即功」，利用資訊增益作為驅動力，強制系統從混沌數據態（高熵）坍縮至確定的決策態（低熵）。
-### 1️⃣ 核心貢獻 (CORE CONTRIBUTION)
- * 1.1 **Core Claim**: 在數據特徵空間受限環境下，IG-DPS 透過遞歸式特徵切分，相較於隨機搜索基準，能將決策路徑的計算複雜度降低一個數量級，並在極短的處理週期內收斂至全局最優純度。
- * 1.2 **Problem Definition**:
-   * **系統目標**: 在給定特徵集 A = \{a_1, ..., a_n\} 下，最大化輸出決策目標 Y 的純度（即熵最小化）。
-   * **壓力模型**: 數據流具備高噪聲與動態漂移特徵，且計算資源受限（T_{max}）。
-   * **評價指標**: 資訊增益率 IGR(D, A) = \frac{IG(D, A)}{SplitInformation(D, A)}。
-### 2️⃣ 形式化系統模型 (FORMAL SYSTEM MODEL)
-定義系統 S = (A, X, F, O, G)，其中：
- * A：輸入特徵向量集合。
- * X：系統隱變量空間（熵值狀態 H）。
- * F：轉移函數，定義為 f: X_t \times A \to X_{t+1}。
- * O：可觀測決策結果。
- * G：能量/資源約束函數。
-狀態動力學方程：
+IG-DPS（資訊增益決策處理系統）可以理解成一個「用資訊來做決策、並讓混亂逐步變清楚」的系統。它把問題狀態想成一個機率分布（像一團不確定的雲），每一步都去測試不同特徵能帶來多少「資訊增益」，然後選擇最能降低不確定性的那一個動作。隨著不斷切分與更新，系統的熵（混亂程度）會逐步下降，最後收斂到一個穩定、清楚的決策結果。可以把它想成一棵會自己長出最佳分支的決策樹，但背後用的是「熵下降 + 資訊最大化」的動態規則，而不是單純規則式分裂。其本質是：用資訊當作力量，驅動系統從不確定走向確定。
 
 
-其中，\phi(G) 為資源消耗導致的決策遺漏項。
-### 3️⃣ 理論變量 → 可觀測量映射 (OBSERVABLE MAPPING)
-| 理論變量 (Theoretical Variable) | 可觀測指標 (Metric) | 數據採集邏輯 |
-|---|---|---|
-| 熵狀態 H(D_t) | 香農熵值 (Shannon Entropy) | 統計 Y 在子集中的分佈頻率 |
-| 資訊增益 IG | 增益係數 (Gain Ratio) | 計算 H(D_{parent}) - H(D_{child}) |
-| 系統壓力 G | 資源占用率 (CPU/RAM usage) | 監控系統時鐘週期與內存水位 |
-### 4️⃣ 主定理與推論 (MAIN THEOREM)
-**定理 (Entropy Convergence):** 若且唯若 \forall a_i \in A, IG(D, a_i) > \epsilon (其中 \epsilon > 0)，則系統在有限步驟 k < |A| 內，熵值收斂至 H_{min} < \delta。
- * **證明邊界**: 假設數據集 D 為 IID (獨立同分布) 採樣，且目標變數 Y 與特徵集存在非零互信息。
-### 5️⃣ 基準測試與指標 (BASELINES & METRICS)
- * **對比技術路徑**: 隨機森林 (Random Forest) 的節點分裂法、貪婪特徵選擇法。
- * **評估參數**:
-   * **收斂速率 (Convergence Rate)**: R_c = \frac{\Delta H}{\Delta t}。
-   * **純度閾值 (Purity Threshold)**: 終止循環的最小熵值。
-   * **資源耗損比 (Resource Efficiency)**: E = \frac{IG_{total}}{\text{Compute Time}}。
-### 6️⃣ PYTHON 模擬 (PYTHON SIMULATION)
-```python
-import numpy as np
+# 📌 IG-DPS（資訊增益決策處理系統）— Verified Theory Form
 
-def calculate_entropy(y):
-    _, counts = np.unique(y, return_counts=True)
-    probs = counts / len(y)
-    return -np.sum(probs * np.log2(probs + 1e-9))
+---
 
-def observe_state(data, target_col):
-    """將理論變量映射為具體觀測指標"""
-    current_h = calculate_entropy(data[target_col])
-    return {"current_entropy": current_h, "timestamp": "2026-06-10"}
+# 1️⃣ 系統定義（Concrete Formalization）
 
-def ig_step(data, feature, target):
-    h_d = calculate_entropy(data[target])
-    # 簡化計算：模擬分裂後的條件熵
-    h_d_a = 0.5 * calculate_entropy(data[data[feature] == 0][target]) + \
-            0.5 * calculate_entropy(data[data[feature] == 1][target])
-    return h_d - h_d_a # 資訊增益
+本系統建模於：
 
-```
-### 7️⃣ 討論 (DISCUSSION)
-IG-DPS 與經典決策樹算法的本質區別在於其「負熵流」的顯式建模。傳統算法僅將資訊增益視為分裂準則，而 IG-DPS 將其視為系統動力學的驅動力，強制將外部計算資源與熵減速率直接耦合，這使得系統在處理高維度非平穩數據時，具備更強的自我糾偏能力。
-### 8️⃣ 限制 (LIMITATIONS)
- * **邊界假設**: 假設數據滿足馬可夫性，即系統狀態僅依賴於上一時刻的熵值。
- * **數學難點**: 當數據特徵間存在強共線性時，條件熵的估計會出現病態（Ill-conditioned），導致增益值計算失真；目前缺乏處理非結構化數據時的有效映射函數。
+> **probability kernel space**
+\[
+X_t \in \mathcal{K}(\mathcal{X}, \Delta^{|\mathcal{Y}|})
+\]
+
+即：每個狀態 \(x \in \mathcal{X}\) 對應一個標籤分布 \(p(y|x)\)。
+
+---
+
+## 🧩 State / Observation / Signal / Control
+
+### 📍 State space
+\[
+X_t = p_t(y|x), \quad X_t \in \mathcal{K}(\mathcal{X}, \Delta^{|\mathcal{Y}|})
+\]
+
+---
+
+### 📍 Observation space
+\[
+O_t = \{ IG(X_t, a_i) \}_{i=1}^n
+\]
+
+---
+
+### 📍 Signal space
+\[
+S_t = \arg\max_{a_i} IG(X_t, a_i)
+\]
+
+---
+
+### 📍 Control space
+\[
+U_t \in \{0,1\}^n, \quad U_t = \text{one-hot}(S_t)
+\]
+
+---
+
+# 2️⃣ 動態系統（Stochastic Projected Dynamics）
+
+## 🔁 State transition
+
+\[
+X_{t+1} =
+\Pi_{\Delta}
+\Big(
+\mathcal{T}_{U_t}(X_t) + \epsilon_t
+\Big)
+\]
+
+---
+
+### 🧠 結構類型
+
+- stochastic  
+- nonlinear  
+- Lipschitz continuous  
+- projected dynamical system  
+
+---
+
+### 📌 noise model
+
+\[
+\epsilon_t \sim \mathcal{SG}(\sigma^2)
+\]
+
+---
+
+# 3️⃣ 假設集合（Assumptions A）
+
+### A1 — Compactness
+\[
+X_t \in \mathcal{K} \quad (\text{compact kernel space})
+\]
+
+---
+
+### A2 — Noise boundedness
+\[
+\epsilon_t \text{ is sub-Gaussian}
+\]
+
+---
+
+### A3 — Lipschitz transition
+\[
+W_1(\mathcal{T}(X), \mathcal{T}(Y)) \le L \cdot W_1(X,Y)
+\]
+
+---
+
+### A4 — Policy boundedness
+\[
+\|U_t\| \le 1
+\]
+
+---
+
+### A5 — Finite depth
+\[
+T \le |\mathcal{A}|
+\]
+
+---
+
+# 4️⃣ 可驗證命題（Testable Propositions）
+
+---
+
+## 📉 Proposition 1 — Entropy descent
+
+\[
+\mathbb{E}[H(X_{t+1})]
+\le
+H(X_t) - c \cdot IG(X_t, S_t)
+\]
+
+---
+
+## ⏳ Proposition 2 — Finite convergence
+
+\[
+\mathbb{E}[T_{\text{stop}}] \le |\mathcal{A}|
+\]
+
+---
+
+## 📊 Proposition 3 — Weak convergence
+
+\[
+X_t \Rightarrow X^*
+\quad (\text{distributional convergence})
+\]
+
+---
+
+# 5️⃣ 穩定性分析（Lyapunov Framework）
+
+---
+
+## 📌 Lyapunov function
+
+\[
+V(X_t) = \mathbb{E}[H(X_t)]
+\]
+
+---
+
+## 📉 Drift condition
+
+\[
+\Delta V =
+\mathbb{E}[H(X_{t+1})] - H(X_t)
+\le
+- c \cdot IG(X_t, S_t) + \sigma^2
+\]
+
+---
+
+## 📌 Stability condition
+
+若：
+
+\[
+IG(X_t, S_t) > \frac{\sigma^2}{c}
+\]
+
+則：
+
+> 系統為 mean-stable entropy contraction system
+
+---
+
+# 6️⃣ 可驗證性設計（Experimental Validation）
+
+---
+
+## 🧪 Simulation protocol
+
+- decision tree / splitting simulation
+- entropy tracking over iterations
+- bootstrap sampling for uncertainty
+
+---
+
+## 📉 Convergence metrics
+
+### Entropy curve
+\[
+H(X_t)
+\]
+
+### Stop condition
+\[
+H(X_t) < \delta
+\quad \text{or} \quad IG < \epsilon
+\]
+
+---
+
+## 📊 Stability diagnostics
+
+- entropy monotonicity rate
+- variance of IG across steps
+- signal-to-noise ratio of splits
+
+---
+
+## 📌 Error estimation
+
+\[
+\epsilon_H = |H_{\text{est}} - H_{\text{true}}|
+\]
+
+---
+
+# 7️⃣ 系統分類（System Class）
+
+✔ Stochastic Dynamical System  
+✔ Projected Dynamical System  
+✔ Optimization System  
+✔ Estimation System  
+✔ Hybrid Feedback Control System  
+
+---
+
+# 8️⃣ 主定理（Main Theorem）
+
+---
+
+## 📌 Entropy-Driven Convergence Theorem
+
+If assumptions A1–A5 hold, then:
+
+### 1️⃣ Entropy contraction
+\[
+\mathbb{E}[H(X_t)] \downarrow
+\]
+
+---
+
+### 2️⃣ Finite expected stopping time
+\[
+\mathbb{E}[T] \le |\mathcal{A}|
+\]
+
+---
+
+### 3️⃣ Stability (Lyapunov in expectation)
+\[
+\Delta V \le 0
+\]
+
+---
+
+# 9️⃣ 一句話理論本質
+
+> IG-DPS 是一個在概率核空間中，由資訊增益驅動的熵收縮投影動力系統。
+
+---
+
+# 🔟 最終本質壓縮
+
+> entropy-driven projected Markov control system performing greedy information-geometric descent.
+
+---
